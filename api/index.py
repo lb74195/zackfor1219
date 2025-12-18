@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from starlette.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 
@@ -479,7 +480,8 @@ def admin_login_page() -> HTMLResponse:
 
 
 @app.post("/admin/login")
-async def admin_login(request: Request) -> HTMLResponse | RedirectResponse:
+@app.post("/admin/login", response_class=Response, response_model=None)
+async def admin_login(request: Request) -> Response:
     form = await request.form()
     username = str(form.get("username") or "").strip()
     password = str(form.get("password") or "")
@@ -525,7 +527,8 @@ def admin_guard(request: Request) -> Optional[RedirectResponse]:
 
 
 @app.get("/admin")
-def admin_home(request: Request) -> HTMLResponse | RedirectResponse:
+@app.get("/admin", response_class=Response, response_model=None)
+def admin_home(request: Request) -> Response:
     redir = admin_guard(request)
     if redir:
         return redir
@@ -549,7 +552,8 @@ def admin_home(request: Request) -> HTMLResponse | RedirectResponse:
 
 
 @app.get("/admin/groups/new")
-def admin_group_new(request: Request) -> HTMLResponse | RedirectResponse:
+@app.get("/admin/groups/new", response_class=Response, response_model=None)
+def admin_group_new(request: Request) -> Response:
     redir = admin_guard(request)
     if redir:
         return redir
@@ -572,7 +576,8 @@ def admin_group_new(request: Request) -> HTMLResponse | RedirectResponse:
 
 
 @app.get("/admin/groups/{gid}")
-def admin_group_detail(gid: int, request: Request) -> HTMLResponse | RedirectResponse:
+@app.get("/admin/groups/{gid}", response_class=Response, response_model=None)
+def admin_group_detail(gid: int, request: Request) -> Response:
     redir = admin_guard(request)
     if redir:
         return redir
@@ -631,7 +636,8 @@ def admin_group_detail(gid: int, request: Request) -> HTMLResponse | RedirectRes
 
 
 @app.get("/admin/staff")
-def admin_staff(request: Request) -> HTMLResponse | RedirectResponse:
+@app.get("/admin/staff", response_class=Response, response_model=None)
+def admin_staff(request: Request) -> Response:
     redir = admin_guard(request)
     if redir:
         return redir
@@ -666,7 +672,8 @@ def admin_staff(request: Request) -> HTMLResponse | RedirectResponse:
 
 
 @app.get("/admin/live")
-def admin_live(request: Request) -> HTMLResponse | RedirectResponse:
+@app.get("/admin/live", response_class=Response, response_model=None)
+def admin_live(request: Request) -> Response:
     redir = admin_guard(request)
     if redir:
         return redir
