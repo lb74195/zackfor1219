@@ -108,7 +108,7 @@ const Live = (() => {
     const label = el("rollLabel");
 
     const { attendees_count, round_counts, current_round_index, remaining_count, pool_max } = state;
-    meta.textContent = `到场人数：${attendees_count}（号码池不含4） · 最大号码：${pool_max || "-"} · 轮数：${round_counts.length} · 剩余可抽：${remaining_count}`;
+    meta.textContent = `到场人数：${attendees_count} · 最大号码：${pool_max || "-"} · 轮数：${round_counts.length} · 剩余可抽：${remaining_count}`;
 
     if (current_round_index >= round_counts.length) {
       title.textContent = "已抽完所有轮次";

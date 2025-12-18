@@ -373,6 +373,7 @@ window.addEventListener("DOMContentLoaded", () => Admin.boot());
 
 // 现场活动配置（/admin/live）
 const LiveAdmin = (() => {
+  let localRoundCounts = [];
   async function apiPost(path, body) {
     const res = await fetch(path, {
       method: "POST",
@@ -396,10 +397,86 @@ const LiveAdmin = (() => {
     return document.getElementById(id);
   }
 
+  function toast(msg, type = "ok") {
+    const n = document.createElement("div");
+    n.className = `alert ${type === "error" ? "alert-error" : "alert-ok"}`;
+    n.textContent = msg;
+    const container = document.querySelector(".container") || document.body;
+    container.prepend(n);
+    setTimeout(() => n.remove(), 2600);
+  }
+
   function parseRoundsCount(v) {
     const n = parseInt(String(v || "0"), 10);
     if (!Number.isFinite(n) || n <= 0) throw new Error("抽几轮必须是正整数");
     return n;
+  }
+
+  function calcAverage(attendeesCount, roundsCount) {
+    const base = Math.floor(attendeesCount / roundsCount);
+    const last = attendeesCount - base * (roundsCount - 1);
+    return Array.from({ length: roundsCount }, (_, i) => (i === roundsCount - 1 ? last : base));
+  }
+
+  function renderRoundEditor() {
+    const page = window.__PAGE__ || {};
+    if (page.name !== "live_admin") return;
+    const editor = el("roundCountsEditor");
+    const summary = el("roundCountsSummary");
+    if (!editor || !summary) return;
+
+    const roundsCount = parseInt(el("roundsCount").value || "0", 10) || 0;
+    if (roundsCount <= 0) {
+      editor.innerHTML = `<div class="muted">请先填写“抽几轮（组数）”，系统会生成对应输入框。</div>`;
+      summary.textContent = "";
+      return;
+    }
+
+    // 确保数组长度正确
+    if (!Array.isArray(localRoundCounts)) localRoundCounts = [];
+    if (localRoundCounts.length !== roundsCount) {
+      const next = new Array(roundsCount).fill(1);
+      for (let i = 0; i < Math.min(localRoundCounts.length, roundsCount); i++) next[i] = localRoundCounts[i];
+      localRoundCounts = next;
+    }
+
+    editor.innerHTML = `
+      <div class="tr th" style="grid-template-columns:140px 1fr;">
+        <div class="td">轮次</div>
+        <div class="td">抽取人数</div>
+      </div>
+      ${Array.from({ length: roundsCount })
+        .map(
+          (_, i) => `
+          <div class="tr" style="grid-template-columns:140px 1fr;">
+            <div class="td"><span class="badge">第 ${i + 1} 轮</span></div>
+            <div class="td">
+              <input class="input" style="max-width:220px" value="${localRoundCounts[i] ?? ""}"
+                oninput="LiveAdmin.updateRoundCount(${i}, this.value)" />
+            </div>
+          </div>`
+        )
+        .join("")}
+    `;
+    renderSummary();
+  }
+
+  function renderSummary() {
+    const summary = el("roundCountsSummary");
+    if (!summary) return;
+    const attendeesCount = parseInt(el("attendeesCount").value || "0", 10) || 0;
+    const total = (localRoundCounts || []).reduce((acc, x) => acc + (parseInt(String(x || "0"), 10) || 0), 0);
+    const remain = attendeesCount - total;
+    summary.textContent =
+      attendeesCount > 0
+        ? `合计：${total} / 到场人数：${attendeesCount}${remain === 0 ? "（✅ 可保存）" : remain > 0 ? `（还差 ${remain}）` : `（超出 ${-remain}）`}`
+        : `合计：${total}`;
+  }
+
+  function updateRoundCount(idx, v) {
+    const n = parseInt(String(v || "0"), 10);
+    localRoundCounts[idx] = Number.isFinite(n) ? n : 0;
+    renderSummary();
   }
 
   function renderState(s) {
@@ -407,6 +484,8 @@ const LiveAdmin = (() => {
     if (!box) return;
     if (!s.configured) {
       box.innerHTML = "未配置活动";
+      // 未配置时也尝试渲染编辑器
+      renderRoundEditor();
       return;
     }
     const rounds = s.round_counts || [];
@@ -427,6 +506,8 @@ const LiveAdmin = (() => {
     `;
     el("attendeesCount").value = String(s.attendees_count);
     el("roundsCount").value = String((s.round_counts || []).length);
+    localRoundCounts = [...(s.round_counts || [])];
+    renderRoundEditor();
   }
 
   async function load() {
@@ -440,22 +521,58 @@ const LiveAdmin = (() => {
     }
   }
 
-  async function save() {
-    const attendeesCount = parseInt(el("attendeesCount").value || "0", 10);
-    if (!(attendeesCount > 0)) return toast("到场人数必须大于0", "error");
-    let roundsCount;
-    try {
-      roundsCount = parseRoundsCount(el("roundsCount").value);
-    } catch (e) {
-      return toast(e.message || "参数错误", "error");
+  function wireInputs() {
+    const page = window.__PAGE__ || {};
+    if (page.name !== "live_admin") return;
+    const roundsEl = el("roundsCount");
+    const attendeesEl = el("attendeesCount");
+    if (roundsEl) {
+      roundsEl.addEventListener("input", () => {
+        // 当轮数变化时，重建输入框
+        renderRoundEditor();
+      });
     }
+    if (attendeesEl) {
+      attendeesEl.addEventListener("input", () => renderSummary());
+    }
+  }
+
+  async function save() {
     try {
-      await apiPost("/api/live/config", { attendees_count: attendeesCount, rounds_count: roundsCount });
+      const attendeesCount = parseInt(el("attendeesCount").value || "0", 10);
+      if (!(attendeesCount > 0)) return toast("到场人数必须大于0", "error");
+      let roundsCount;
+      try {
+        roundsCount = parseRoundsCount(el("roundsCount").value);
+      } catch (e) {
+        return toast(e.message || "参数错误", "error");
+      }
+      // 校验每轮配置
+      if (!Array.isArray(localRoundCounts) || localRoundCounts.length !== roundsCount) {
+        return toast("请先配置每轮抽取人数", "error");
+      }
+      const counts = localRoundCounts.map((x) => parseInt(String(x || "0"), 10) || 0);
+      if (counts.some((x) => x <= 0)) return toast("每轮抽取人数必须都大于0", "error");
+      const total = counts.reduce((a, b) => a + b, 0);
+      if (total !== attendeesCount) {
+        const diff = attendeesCount - total;
+        if (diff > 0) return toast(`人数少了：还差 ${diff} 人（无法保存）`, "error");
+        return toast(`人数多了：超出 ${-diff} 人（无法保存）`, "error");
+      }
+      await apiPost("/api/live/config", { attendees_count: attendeesCount, rounds_count: roundsCount, round_counts: counts });
       toast("已保存");
       await load();
     } catch (e) {
       toast(e.message || "保存失败", "error");
     }
+  }
+
+  function fillAverage() {
+    const attendeesCount = parseInt(el("attendeesCount").value || "0", 10);
+    const roundsCount = parseInt(el("roundsCount").value || "0", 10);
+    if (!(attendeesCount > 0 && roundsCount > 0)) return toast("请先填写到场人数与轮数", "error");
+    localRoundCounts = calcAverage(attendeesCount, roundsCount);
+    renderRoundEditor();
   }
 
   async function reset() {
@@ -469,10 +586,13 @@ const LiveAdmin = (() => {
     }
   }
 
-  return { load, save, reset };
+  return { load, save, reset, fillAverage, updateRoundCount, wireInputs };
 })();
 
 window.LiveAdmin = LiveAdmin;
-window.addEventListener("DOMContentLoaded", () => LiveAdmin.load());
+window.addEventListener("DOMContentLoaded", () => {
+  LiveAdmin.load();
+  LiveAdmin.wireInputs();
+});
 
 

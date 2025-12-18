@@ -785,7 +785,17 @@ class Handler(BaseHTTPRequestHandler):
                         <button class="btn btn-primary" onclick="LiveAdmin.save()">保存配置</button>
                         <button class="btn btn-danger" onclick="LiveAdmin.reset()">清空抽取结果并回到第1轮</button>
                       </div>
-                      <div class="muted" style="margin-top:10px">系统会自动平均分配每轮抽取人数，若无法整除，最后一轮会把剩余全部抽出。规则：任何包含“4”的号码都不会出现（如 4/14/24/...）。</div>
+                      <div class="muted" style="margin-top:10px">规则：任何包含“4”的号码都不会出现（如 4/14/24/...）。</div>
+                    </div>
+
+                    <div class="card" style="margin-top:14px">
+                      <div class="card-title">每轮要抽多少人</div>
+                      <div class="muted">按轮手动配置每轮抽取人数；总和必须等于到场人数。</div>
+                      <div id="roundCountsEditor" class="table" style="margin-top:10px"></div>
+                      <div class="row" style="margin-top:10px">
+                        <button class="btn btn-ghost" onclick="LiveAdmin.fillAverage()">平均填充（可再手动改）</button>
+                      </div>
+                      <div id="roundCountsSummary" class="muted" style="margin-top:8px"></div>
                     </div>
 
                     <div class="card" style="margin-top:14px">
@@ -834,17 +844,8 @@ class Handler(BaseHTTPRequestHandler):
                     api_error(self, HTTPStatus.BAD_REQUEST, "到场人数必须大于0")
                     return
                 # 推荐/默认：只输入“抽几轮”，系统自动分配；为兼容旧前端也允许 round_counts
-                if rounds_count > 0:
-                    if rounds_count > attendees_count:
-                        api_error(self, HTTPStatus.BAD_REQUEST, "轮数不能大于到场人数")
-                        return
-                    base = attendees_count // rounds_count
-                    last = attendees_count - base * (rounds_count - 1)
-                    round_counts = ([base] * (rounds_count - 1)) + [last]
-                else:
-                    if not isinstance(round_counts, list) or not round_counts:
-                        api_error(self, HTTPStatus.BAD_REQUEST, "请提供抽几轮（rounds_count）")
-                        return
+                if isinstance(round_counts, list) and round_counts:
+                    # 手动配置优先
                     try:
                         round_counts = [int(x) for x in round_counts]
                     except Exception:
@@ -853,6 +854,24 @@ class Handler(BaseHTTPRequestHandler):
                     if any(x <= 0 for x in round_counts):
                         api_error(self, HTTPStatus.BAD_REQUEST, "每轮抽取人数必须都大于0")
                         return
+                    if rounds_count > 0 and len(round_counts) != rounds_count:
+                        api_error(self, HTTPStatus.BAD_REQUEST, "每轮抽取人数的数量必须等于轮数")
+                        return
+                    rounds_count = len(round_counts)
+                    if rounds_count > attendees_count:
+                        api_error(self, HTTPStatus.BAD_REQUEST, "轮数不能大于到场人数")
+                        return
+                else:
+                    # 未提供手动配置：按轮数平均填充（最后一轮吃剩余）
+                    if rounds_count <= 0:
+                        api_error(self, HTTPStatus.BAD_REQUEST, "请提供抽几轮（rounds_count）")
+                        return
+                    if rounds_count > attendees_count:
+                        api_error(self, HTTPStatus.BAD_REQUEST, "轮数不能大于到场人数")
+                        return
+                    base = attendees_count // rounds_count
+                    last = attendees_count - base * (rounds_count - 1)
+                    round_counts = ([base] * (rounds_count - 1)) + [last]
 
                 # 校验：总抽取人数必须等于到场人数（每个手牌最终都会被抽到一次）
                 total_needed = sum(round_counts)
@@ -1385,9 +1404,11 @@ def patch_get_into_handler() -> None:
 def main() -> None:
     init_db()
     patch_get_into_handler()
+    host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", "8000"))
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print(f"✅ 抽奖后台已启动： http://127.0.0.1:{port}/admin")
+    server = ThreadingHTTPServer((host, port), Handler)
+    # 提示地址仅用于本地观感；生产环境请用实际域名访问
+    print(f"✅ 抽奖后台已启动： http://{host}:{port}/admin")
     server.serve_forever()
 
 

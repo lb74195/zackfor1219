@@ -13,6 +13,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 
 # =========================
@@ -402,6 +403,9 @@ def draw_group(conn: sqlite3.Connection, group_id: int) -> Tuple[bool, str]:
 
 app = FastAPI()
 
+# 非 Vercel 环境需要由应用本身提供静态资源（Vercel 由 routes 直出 /static）
+app.mount("/static", StaticFiles(directory=str(APP_DIR / "static")), name="static")
+
 
 @app.on_event("startup")
 def _startup() -> None:
@@ -694,6 +698,15 @@ def admin_live(request: Request) -> HTMLResponse | RedirectResponse:
           <div class="muted" style="margin-top:10px">规则：任何包含“4”的号码都不会出现（如 4/14/24/...）。</div>
         </div>
         <div class="card" style="margin-top:14px">
+          <div class="card-title">每轮要抽多少人</div>
+          <div class="muted">按轮手动配置每轮抽取人数；总和必须等于到场人数。</div>
+          <div id="roundCountsEditor" class="table" style="margin-top:10px"></div>
+          <div class="row" style="margin-top:10px">
+            <button class="btn btn-ghost" onclick="LiveAdmin.fillAverage()">平均填充（可再手动改）</button>
+          </div>
+          <div id="roundCountsSummary" class="muted" style="margin-top:8px"></div>
+        </div>
+        <div class="card" style="margin-top:14px">
           <div class="card-title">当前进度</div>
           <div id="liveStateBox" class="muted">加载中...</div>
         </div>
@@ -721,17 +734,33 @@ async def live_config(request: Request) -> JSONResponse:
     data = await request.json()
     attendees_count = int(data.get("attendees_count") or 0)
     rounds_count = int(data.get("rounds_count") or 0)
+    round_counts = data.get("round_counts")
     if attendees_count <= 0:
         return api_error(400, "到场人数必须大于0")
-    if rounds_count <= 0:
-        return api_error(400, "抽几轮必须大于0")
-    if rounds_count > attendees_count:
-        return api_error(400, "轮数不能大于到场人数")
-    base = attendees_count // rounds_count
-    last = attendees_count - base * (rounds_count - 1)
-    round_counts = ([base] * (rounds_count - 1)) + [last]
+
+    if isinstance(round_counts, list) and round_counts:
+        try:
+            round_counts = [int(x) for x in round_counts]
+        except Exception:
+            return api_error(400, "每轮抽取人数必须是整数数组")
+        if any(x <= 0 for x in round_counts):
+            return api_error(400, "每轮抽取人数必须都大于0")
+        if rounds_count > 0 and len(round_counts) != rounds_count:
+            return api_error(400, "每轮抽取人数的数量必须等于轮数")
+        rounds_count = len(round_counts)
+        if rounds_count > attendees_count:
+            return api_error(400, "轮数不能大于到场人数")
+    else:
+        if rounds_count <= 0:
+            return api_error(400, "抽几轮必须大于0")
+        if rounds_count > attendees_count:
+            return api_error(400, "轮数不能大于到场人数")
+        base = attendees_count // rounds_count
+        last = attendees_count - base * (rounds_count - 1)
+        round_counts = ([base] * (rounds_count - 1)) + [last]
+
     if sum(round_counts) != attendees_count:
-        return api_error(400, "总抽取人数必须等于到场人数")
+        return api_error(400, "每轮抽取人数合计必须等于到场人数")
 
     conn = open_db()
     try:
