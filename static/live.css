@@ -1,0 +1,57 @@
+:root{
+  --bg:#070b14;
+  --panel:rgba(255,255,255,.06);
+  --border:rgba(255,255,255,.12);
+  --text:#f0f5ff;
+  --muted:#9fb0d0;
+  --primary:#4f8cff;
+  --danger:#ff4d4f;
+  --shadow:0 18px 60px rgba(0,0,0,.45);
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 700px at 30% 0%, #14264a 0%, #0a1020 45%, #050810 100%);color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"PingFang SC","Microsoft YaHei",Arial}
+.live-topbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:rgba(10,16,32,.78);backdrop-filter: blur(10px);border-bottom:1px solid var(--border)}
+.brand{font-weight:900;letter-spacing:.8px}
+.actions{display:flex;gap:12px;align-items:center}
+.link{color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:10px;border:1px solid transparent}
+.link:hover{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:var(--text)}
+.live-container{max-width:1200px;margin:0 auto;padding:18px 14px 80px}
+.card{background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow);padding:16px}
+.card-title{font-weight:900;margin-bottom:10px}
+.muted{color:var(--muted);font-size:13px}
+.label{display:block;color:var(--muted);font-size:13px;margin:10px 0 6px}
+.input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.22);color:var(--text);outline:none}
+.input:focus{border-color:rgba(79,140,255,.75);box-shadow:0 0 0 3px rgba(79,140,255,.18)}
+.btn{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:var(--text);padding:10px 12px;border-radius:12px;cursor:pointer;font-weight:800}
+.btn:hover{background:rgba(255,255,255,.10)}
+.btn-primary{background:linear-gradient(180deg, rgba(79,140,255,.95), rgba(79,140,255,.72));border-color:rgba(79,140,255,.80)}
+.btn-danger{background:linear-gradient(180deg, rgba(255,77,79,.95), rgba(255,77,79,.70));border-color:rgba(255,77,79,.75)}
+.btn-ghost{background:transparent}
+.btn-big{font-size:18px;padding:12px 18px;border-radius:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.page-header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.h1{font-size:22px;font-weight:900}
+
+.roll-box{margin-top:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.18);border-radius:18px;padding:18px;text-align:center}
+.roll-label{color:var(--muted);font-weight:800}
+.roll-number{margin-top:10px;font-size:84px;line-height:1;font-weight:950;letter-spacing:2px}
+@media(max-width:900px){.roll-number{font-size:64px}}
+
+.round-board{display:grid;grid-template-columns:repeat(5, 1fr);gap:12px}
+@media(max-width:1100px){.round-board{grid-template-columns:repeat(3, 1fr)}}
+@media(max-width:740px){.round-board{grid-template-columns:repeat(2, 1fr)}}
+.round-card{border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.14);border-radius:16px;padding:12px}
+.round-card.active{border-color:rgba(79,140,255,.65);box-shadow:0 0 0 4px rgba(79,140,255,.14)}
+.round-title{display:flex;justify-content:space-between;align-items:center;font-weight:900}
+.badge{display:inline-block;font-size:12px;padding:4px 10px;border:1px solid rgba(255,255,255,.16);border-radius:999px;color:var(--muted)}
+.slots{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.slot{min-width:66px;padding:10px 10px;border-radius:14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);text-align:center;font-weight:950;font-size:18px}
+.slot.empty{color:rgba(255,255,255,.35);font-weight:800}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;min-width:260px;max-width:92vw;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.35);backdrop-filter: blur(10px);box-shadow:var(--shadow);z-index:30}
+.toast.error{border-color:rgba(255,77,79,.55);background:rgba(255,77,79,.14)}
+.toast.ok{border-color:rgba(48,209,88,.35);background:rgba(48,209,88,.12)}
+
+
