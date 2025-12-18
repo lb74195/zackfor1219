@@ -469,7 +469,9 @@ const LiveAdmin = (() => {
     const remain = attendeesCount - total;
     summary.textContent =
       attendeesCount > 0
-        ? `合计：${total} / 到场人数：${attendeesCount}${remain === 0 ? "（✅ 可保存）" : remain > 0 ? `（还差 ${remain}）` : `（超出 ${-remain}）`}`
+        ? `合计：${total} / 到场人数：${attendeesCount}${
+            remain === 0 ? "（✅ 可保存）" : remain > 0 ? `（✅ 可保存，未中奖 ${remain} 人）` : `（❌ 超出 ${-remain}）`
+          }`
         : `合计：${total}`;
   }
 
@@ -554,11 +556,8 @@ const LiveAdmin = (() => {
       const counts = localRoundCounts.map((x) => parseInt(String(x || "0"), 10) || 0);
       if (counts.some((x) => x <= 0)) return toast("每轮抽取人数必须都大于0", "error");
       const total = counts.reduce((a, b) => a + b, 0);
-      if (total !== attendeesCount) {
-        const diff = attendeesCount - total;
-        if (diff > 0) return toast(`人数少了：还差 ${diff} 人（无法保存）`, "error");
-        return toast(`人数多了：超出 ${-diff} 人（无法保存）`, "error");
-      }
+      if (!(total > 0)) return toast("总抽取人数必须大于0", "error");
+      if (total > attendeesCount) return toast(`总抽取人数超出：多了 ${total - attendeesCount} 人（无法保存）`, "error");
       await apiPost("/api/live/config", { attendees_count: attendeesCount, rounds_count: roundsCount, round_counts: counts });
       toast("已保存");
       await load();

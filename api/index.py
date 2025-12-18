@@ -706,7 +706,7 @@ def admin_live(request: Request) -> Response:
         </div>
         <div class="card" style="margin-top:14px">
           <div class="card-title">每轮要抽多少人</div>
-          <div class="muted">按轮手动配置每轮抽取人数；总和必须等于到场人数。</div>
+        <div class="muted">按轮手动配置每轮抽取人数；总和不能超过到场人数（可少于）。</div>
           <div id="roundCountsEditor" class="table" style="margin-top:10px"></div>
           <div class="row" style="margin-top:10px">
             <button class="btn btn-ghost" onclick="LiveAdmin.fillAverage()">平均填充（可再手动改）</button>
@@ -766,8 +766,11 @@ async def live_config(request: Request) -> JSONResponse:
         last = attendees_count - base * (rounds_count - 1)
         round_counts = ([base] * (rounds_count - 1)) + [last]
 
-    if sum(round_counts) != attendees_count:
-        return api_error(400, "每轮抽取人数合计必须等于到场人数")
+    total_needed = sum(round_counts)
+    if total_needed <= 0:
+        return api_error(400, "总抽取人数必须大于0")
+    if total_needed > attendees_count:
+        return api_error(400, "总抽取人数不能大于到场人数")
 
     conn = open_db()
     try:

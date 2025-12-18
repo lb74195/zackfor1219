@@ -790,7 +790,7 @@ class Handler(BaseHTTPRequestHandler):
 
                     <div class="card" style="margin-top:14px">
                       <div class="card-title">每轮要抽多少人</div>
-                      <div class="muted">按轮手动配置每轮抽取人数；总和必须等于到场人数。</div>
+                      <div class="muted">按轮手动配置每轮抽取人数；总和不能超过到场人数（可少于）。</div>
                       <div id="roundCountsEditor" class="table" style="margin-top:10px"></div>
                       <div class="row" style="margin-top:10px">
                         <button class="btn btn-ghost" onclick="LiveAdmin.fillAverage()">平均填充（可再手动改）</button>
@@ -873,10 +873,13 @@ class Handler(BaseHTTPRequestHandler):
                     last = attendees_count - base * (rounds_count - 1)
                     round_counts = ([base] * (rounds_count - 1)) + [last]
 
-                # 校验：总抽取人数必须等于到场人数（每个手牌最终都会被抽到一次）
+                # 校验：总抽取人数可以少于到场人数，但不能超过
                 total_needed = sum(round_counts)
-                if total_needed != attendees_count:
-                    api_error(self, HTTPStatus.BAD_REQUEST, "总抽取人数必须等于到场人数（最后一轮抽剩下全部）")
+                if total_needed <= 0:
+                    api_error(self, HTTPStatus.BAD_REQUEST, "总抽取人数必须大于0")
+                    return
+                if total_needed > attendees_count:
+                    api_error(self, HTTPStatus.BAD_REQUEST, "总抽取人数不能大于到场人数")
                     return
 
                 conn = open_db()
